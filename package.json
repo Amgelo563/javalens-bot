@@ -60,5 +60,11 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "packageManager": "pnpm@9.5.0"
+  "packageManager": "pnpm@9.5.0",
+  "lint-staged": {
+    "*.ts": [
+      "pnpm format:file",
+      "pnpm lint:file"
+    ]
+  }
 }
