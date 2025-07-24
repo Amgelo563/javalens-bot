@@ -6,6 +6,10 @@
 
 A lightweight Discord bot for searching on Javadocs through slash commands.
 
+
+https://github.com/user-attachments/assets/aea3e29b-665f-4a39-a5d4-1f9de5212451
+
+
 ---
 
 ## 🚧 Warnings (READ THIS!)
