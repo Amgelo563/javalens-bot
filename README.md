@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/aea3e29b-665f-4a39-a5d4-1f9de5212451
 
 - The bot works by scraping each Javadoc, and saving **every** message in a local `__cache__` folder. This is done to avoid querying them in runtime, so (apart from the Discord connection), the bot works entirely offline.
 - Depending on the javadoc's size, **this can get storage-heavy and take a while (100+ MBs and 5-10 mins for a large javadoc).** However, it shouldn't need more than 5-10 MBs of RAM while running.
-- There are options to make the process faster, though not lighter. For more information, check the [☢ Advanced Configuration](#-advanced-configuration) section.
+- There are options to make the process faster, though not lighter. For more information, check the `advanced` field in the config documentation.
 - This uses the [`javadocs-scraper`](http://github.com/Amgelo563/javadocs-scraper) library for the scraping process. For issues with the scraping, please open an issue there instead.
 
 ## 🧩 Features
@@ -146,6 +146,16 @@ commands: [
     ]
   }
 ]
+
+// Optional, some messages to use in the bot. Defaults to the values shown below.
+messages: {
+  // For brevity, codeblocks are omitted from messages. They will be replaced with the value below.
+  codeblockOmitted: "(Codeblock omitted for brevity)"
+  // A generic error message shown to users when there was an error while processing the command.
+  error: "An error occurred. Please try again, or contact a staff member if this keeps ocurring."
+  // An error message shown to users when they don't choose an option from the autocomplete.
+  invalidOption: "Invalid option. Please choose one from the autocomplete."
+}
 
 // Optional, defaults to true. Whether to run the bot in debug mode, this'll show more useful info while
 // javadocs are being scraped.
