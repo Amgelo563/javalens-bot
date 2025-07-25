@@ -1,10 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
-  APIApplicationCommandInteractionDataBasicOption,
-  APIApplicationCommandInteractionDataOption,
+  type APIApplicationCommandInteractionDataBasicOption,
+  type APIApplicationCommandInteractionDataOption,
   ApplicationCommandOptionType,
   ApplicationCommandType,
-  GatewayDispatchEvents,
+  type GatewayDispatchEvents,
   InteractionType,
   type MappedEvents,
   MessageFlags,
@@ -25,17 +24,21 @@ export class JavadocCommandExecutor {
 
   protected readonly prefixes: ConfigSchemaOutput['prefixes'];
 
+  protected readonly messages: ConfigSchemaOutput['messages'];
+
   protected readonly logger: LoggerLike;
 
   constructor(options: {
     options: GlobalCommandOptionsSchemaOutput;
     codec: JavadocCustomIdCodec;
     prefixes: ConfigSchemaOutput['prefixes'];
+    messages: ConfigSchemaOutput['messages'];
     logger: LoggerLike;
   }) {
     this.options = options.options;
     this.codec = options.codec;
     this.prefixes = options.prefixes;
+    this.messages = options.messages;
     this.logger = options.logger;
   }
 
@@ -57,14 +60,6 @@ export class JavadocCommandExecutor {
       );
     }
 
-    const ephemeral = this.getBooleanOptionValue(
-      this.options.hide.name,
-      options,
-    );
-    await api.interactions.defer(interaction.id, interaction.token, {
-      flags: ephemeral ? MessageFlags.Ephemeral : undefined,
-    });
-
     const query = this.getStringOptionValue(this.options.query.name, options);
     if (query === null) {
       this.logger.warn(
@@ -76,8 +71,20 @@ export class JavadocCommandExecutor {
 
     const input = this.codec.deserialize(query);
     if (!input) {
-      return;
+      return api.interactions.reply(interaction.id, interaction.token, {
+        content: this.messages.invalidOption,
+        flags: MessageFlags.Ephemeral,
+      });
     }
+
+    const ephemeral = this.getBooleanOptionValue(
+      this.options.hide.name,
+      options,
+    );
+    await api.interactions.defer(interaction.id, interaction.token, {
+      flags: ephemeral ? MessageFlags.Ephemeral : undefined,
+    });
+
     const entityType = fromMappingToEntityType(input.type);
     const messageResult = isJavaMember({ entityType })
       ? await javadoc.readMemberMessage(input.id)
@@ -90,6 +97,16 @@ export class JavadocCommandExecutor {
         'Query: ',
         query,
       );
+      await api.interactions.editReply(
+        interaction.application_id,
+        interaction.token,
+        { content: this.messages.error },
+      );
+      setTimeout(async () => {
+        await api.interactions
+          .deleteReply(interaction.application_id, interaction.token)
+          .catch(() => {});
+      }, 3000);
       return;
     }
 

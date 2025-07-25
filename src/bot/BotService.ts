@@ -82,6 +82,7 @@ export class BotService {
       codec,
       prefixes: options.config.prefixes,
       logger: options.logger,
+      messages: options.config.messages,
     });
 
     const searchers: Record<string, DiscordSearcher> = {};
