@@ -3,7 +3,7 @@ import { err, ok, type Result } from 'neverthrow';
 import { once } from 'node:events';
 import { rmSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname } from 'node:path';
+import { dirname, join as pathJoin } from 'node:path';
 import { BroadcastChannel } from 'node:worker_threads';
 import PromiseQueue from 'queue-promise';
 import type { JavadocCommandOriginSchemaOutput } from '../../config/command/origin/JavadocCommandOriginSchema.js';
@@ -20,7 +20,7 @@ type MessageData<Type extends 'object' | 'member'> =
   AutocompleteDataSchemaOutput[Type extends 'object' ? 'o' : 'm'];
 
 export class ScrapeJob {
-  protected static readonly FileUrlPrefix = 'file://';
+  protected static readonly FileUrlPrefix = 'file:';
 
   protected readonly fileWriteQueue: PromiseQueue;
 
@@ -77,8 +77,14 @@ export class ScrapeJob {
     let scraper: Scraper;
     let withUrls = true;
     if (this.origin.url.startsWith(ScrapeJob.FileUrlPrefix)) {
-      const filePath = this.origin.url.slice(ScrapeJob.FileUrlPrefix.length);
-      scraper = Scraper.fromPath(filePath);
+      const relativePath = this.origin.url.slice(
+        ScrapeJob.FileUrlPrefix.length,
+      );
+      const fullPath = relativePath.startsWith('/')
+        ? relativePath
+        : pathJoin(this.pathBuilder.getProjectRoot(), relativePath);
+
+      scraper = Scraper.fromPath(fullPath);
       withUrls = false;
     } else {
       scraper = Scraper.fromURL(this.origin.url);

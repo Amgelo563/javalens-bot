@@ -87,7 +87,10 @@ commands: [
     name: "my-project"
     // The command's description, shown in the autocomplete and when invoking it.
     description: "Use this command to query MyProject's javadocs",
-    // The Javadoc's URL. This can be an HTTP(S) URL or a local file path, prepended with `file://`.
+    // The Javadoc's URL. This can be an HTTP(S) URL or a local file path, prepended with `file:`.
+    // If it's a file path, it's taken as absolute if it starts with `/`, otherwise it's relative
+    // to the bot's root (where the `config.conf` file is). It must also point to the index.html file,
+    // or overview-summary.html for Javadocs older than Java 11.
     url: "https://myproject.com/javadocs",
     // The Javadoc's title, shown in messages and logging.
     title: "My Project",
