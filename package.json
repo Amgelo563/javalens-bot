@@ -4,6 +4,7 @@
   "version": "0.0.1",
   "main": "dist/index.js",
   "private": true,
+  "type": "module",
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "pnpm run clean && tsc",
