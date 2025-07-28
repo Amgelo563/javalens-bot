@@ -217,6 +217,10 @@ export class ScrapeJob {
       };
     }
 
+    if (!this.fileWriteQueue.isEmpty) {
+      await once(this.fileWriteQueue, 'end');
+    }
+
     const dataFilePath = this.pathBuilder.getDataFilePath();
     const data: AutocompleteDataSchemaOutput = {
       o: this.objectAutocompletions,
@@ -225,10 +229,6 @@ export class ScrapeJob {
       v: 1,
     };
     await writeFile(dataFilePath, JSON.stringify(data));
-
-    if (!this.fileWriteQueue.isEmpty) {
-      await once(this.fileWriteQueue, 'end');
-    }
 
     return ok(this.pathBuilder);
   }
