@@ -202,7 +202,7 @@ export class ScrapeMessageBuilder {
             baseUrl: this.withUrls ? this.entity.url : null,
             codeblockOmit: this.messages.codeblockOmitted,
           })
-        : options.content.text;
+        : TextFormatter.collapseWhitespace(options.content.text ?? '');
     if (!formatted) {
       return null;
     }

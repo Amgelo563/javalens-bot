@@ -10,6 +10,13 @@ import Turndown from 'turndown';
 export class TextFormatter {
   protected static readonly NonDesiredEndCharacters = /[:;,.]/;
 
+  protected static readonly WhitespaceCollapseRegex = /\s+/g;
+
+  public static collapseWhitespace(text: string): string {
+    if (!text) return '';
+    return text.replace(TextFormatter.WhitespaceCollapseRegex, ' ').trim();
+  }
+
   // Truncates by words. If the first sentence is longer than maxLength, truncate until the max length will be reached
   public static truncateByWords(text: string, maxLength: number) {
     if (text.length <= maxLength) {
@@ -50,6 +57,12 @@ export class TextFormatter {
     const turndown = new Turndown({
       bulletListMarker: '-',
     })
+      .addRule('whitespace collapse', {
+        filter: ['p', 'div', 'section'],
+        replacement(content) {
+          return TextFormatter.collapseWhitespace(content);
+        },
+      })
       .addRule('codeblocks', {
         filter: ['pre'],
         replacement() {
