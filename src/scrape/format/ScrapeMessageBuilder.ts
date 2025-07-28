@@ -97,7 +97,7 @@ export class ScrapeMessageBuilder {
       }
     }
     if (lines.length !== list.items.length) {
-      lines.push(`...and ${list.items.length - lines.length} more`);
+      lines.push(`- ...and ${list.items.length - lines.length} more`);
     }
 
     this.parts.push({
