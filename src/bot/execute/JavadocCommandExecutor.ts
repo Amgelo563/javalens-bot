@@ -12,7 +12,10 @@ import type { GlobalCommandOptionsSchemaOutput } from '../../config/command/opti
 import type { ConfigSchemaOutput } from '../../config/schema/ConfigSchema.js';
 import { fromMappingToEntityType } from '../../javadoc/entity/EntityTypeMapping.js';
 import type { ScrapedJavadoc } from '../../javadoc/ScrapedJavadoc.js';
-import { isJavaMember } from '../../javadoc/types/AnyJavaMember.js';
+import {
+  BroadJavaEntityTypeEnum,
+  getBroadJavaEntityType,
+} from '../../javadoc/types/BroadJavaEntityType.js';
 import type { LoggerLike } from '../../log/LoggerLike.js';
 import type { JavadocCustomIdCodec } from '../customId/JavadocCustomIdCodec.js';
 import { type DiscordSearcher } from '../search/DiscordSearcher.js';
@@ -42,8 +45,10 @@ export class JavadocCommandExecutor {
     this.logger = options.logger;
   }
 
+  // FIXME: too many parameters, consider refactoring or single object parameter
   public async handleChatInput(
     javadoc: ScrapedJavadoc,
+    searcher: DiscordSearcher,
     options:
       | APIApplicationCommandInteractionDataBasicOption[]
       | APIApplicationCommandInteractionDataOption[],
@@ -86,9 +91,11 @@ export class JavadocCommandExecutor {
     });
 
     const entityType = fromMappingToEntityType(input.type);
-    const messageResult = isJavaMember({ entityType })
-      ? await javadoc.readMemberMessage(input.id)
-      : await javadoc.readObjectMessage(input.id);
+    const broadType = getBroadJavaEntityType({ entityType });
+    const messageResult =
+      broadType === BroadJavaEntityTypeEnum.Member
+        ? await javadoc.readMemberMessage(input.id)
+        : await javadoc.readObjectMessage(input.id);
 
     if (messageResult.isErr()) {
       this.logger.warn(
@@ -119,6 +126,8 @@ export class JavadocCommandExecutor {
         content: `${this.prefixes.message[type]} ${messageResult.value}`,
       },
     );
+
+    searcher.bump(query, broadType);
   }
 
   public async handleAutocomplete(

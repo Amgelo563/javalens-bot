@@ -282,6 +282,7 @@ export class BotService {
           try {
             await this.executor.handleChatInput(
               subcommand.javadoc,
+              this.searchers[subcommand.id],
               selected.options ?? [],
               [event],
             );
@@ -295,6 +296,7 @@ export class BotService {
           try {
             await this.executor.handleChatInput(
               command.javadoc,
+              this.searchers[command.id],
               interaction.data.options ?? [],
               [event],
             );

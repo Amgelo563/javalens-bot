@@ -3,7 +3,12 @@ import { fuzzyFilter, type FuzzyFilterResult } from 'fuzzbunny';
 import type { ConfigSchemaOutput } from '../../../config/schema/ConfigSchema.js';
 import { CommandLimits } from '../../../discord/command/limits/CommandLimits.js';
 import { fromMappingToEntityType } from '../../../javadoc/entity/EntityTypeMapping.js';
+import {
+  type BroadJavaEntityType,
+  BroadJavaEntityTypeEnum,
+} from '../../../javadoc/types/BroadJavaEntityType.js';
 import type { AutocompleteDataSchemaOutput } from '../../../scrape/autocomplete/schema/AutocompleteDataSchemaOutput.js';
+import { FixedSizeDeque } from '../../../structures/FixedSizeDeque.js';
 import { type JavadocCustomIdCodec } from '../../customId/JavadocCustomIdCodec.js';
 import type { DiscordSearcher } from '../DiscordSearcher.js';
 
@@ -24,6 +29,10 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
 
   protected readonly prefixes: ConfigSchemaOutput['prefixes'];
 
+  protected readonly lastHitDeque: FixedSizeDeque<
+    APIApplicationCommandOptionChoice<string>
+  >;
+
   constructor(options: {
     members: Entry[];
     objects: Entry[];
@@ -34,6 +43,9 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
     this.objects = options.objects;
     this.data = options.data;
     this.prefixes = options.prefixes;
+    this.lastHitDeque = new FixedSizeDeque<
+      APIApplicationCommandOptionChoice<string>
+    >({ maxSize: CommandLimits.Autocomplete.Amount });
   }
 
   public static create(options: {
@@ -61,6 +73,16 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
   }
 
   public search(query: string): APIApplicationCommandOptionChoice<string>[] {
+    if (query.trim() === '') {
+      const lastHit = this.lastHitDeque.getItems();
+      const firstObjects = this.objects
+        .slice(0, CommandLimits.Autocomplete.Amount - lastHit.length)
+        .map((entry) =>
+          this.entryToChoice(entry, BroadJavaEntityTypeEnum.Object),
+        );
+      return [...lastHit, ...firstObjects];
+    }
+
     return ['.', '#', '('].some((char) => query.includes(char))
       ? this.searchPrioritizingMembers(query)
       : this.searchPrioritizingObjects(query);
@@ -77,7 +99,10 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
       fields: ['name'],
     }).slice(0, CommandLimits.Autocomplete.Amount);
 
-    const members = this.toChoices(fuzzyResults, 'members');
+    const members = this.fuzzyResultsToChoices(
+      fuzzyResults,
+      BroadJavaEntityTypeEnum.Member,
+    );
     if (fuzzyResults.length === CommandLimits.Autocomplete.Amount) {
       return members;
     }
@@ -86,7 +111,10 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
       fields: ['name'],
     }).slice(0, CommandLimits.Autocomplete.Amount - members.length);
 
-    const objects = this.toChoices(rawObjects, 'objects');
+    const objects = this.fuzzyResultsToChoices(
+      rawObjects,
+      BroadJavaEntityTypeEnum.Object,
+    );
 
     return [...members, ...objects];
   }
@@ -98,7 +126,10 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
       fields: ['name'],
     }).slice(0, CommandLimits.Autocomplete.Amount);
 
-    const objects = this.toChoices(fuzzyResults, 'objects');
+    const objects = this.fuzzyResultsToChoices(
+      fuzzyResults,
+      BroadJavaEntityTypeEnum.Object,
+    );
 
     if (fuzzyResults.length >= CommandLimits.Autocomplete.Amount) {
       return objects;
@@ -107,24 +138,49 @@ export class FuzzbunnyDiscordSearcher implements DiscordSearcher {
     const rawMembers = fuzzyFilter(this.members, query, {
       fields: ['name'],
     }).slice(0, CommandLimits.Autocomplete.Amount - objects.length);
-    const members = this.toChoices(rawMembers, 'members');
+    const members = this.fuzzyResultsToChoices(
+      rawMembers,
+      BroadJavaEntityTypeEnum.Member,
+    );
 
     return [...objects, ...members];
   }
 
-  protected toChoices(
-    results: FuzzyFilterResult<Entry>[],
-    type: 'members' | 'objects',
-  ): APIApplicationCommandOptionChoice<string>[] {
-    return results.map((result) => {
-      const data = this.data[type === 'members' ? 'm' : 'o'][result.item.file];
-      const name = data.m;
-      const entityType = fromMappingToEntityType(data.t);
+  public bump(customId: string, type: BroadJavaEntityType): void {
+    // while this looks bad given the data size, it's not executed that often. could fix with a map<customId, index>
+    // if there's actually a performance issue reported by someone
+    const entry =
+      type === BroadJavaEntityTypeEnum.Object
+        ? this.objects.find((entry) => entry.customId === customId)
+        : this.members.find((entry) => entry.customId === customId);
+    if (!entry) {
+      console.warn(
+        `Bumping with customId ${customId} of type ${type} failed, not found.`,
+      );
+      return;
+    }
+    const choice = this.entryToChoice(entry, type);
+    this.lastHitDeque.push(choice);
+  }
 
-      return {
-        name: `${this.prefixes.autocomplete[entityType]} ${name}`,
-        value: result.item.customId,
-      };
-    });
+  protected fuzzyResultsToChoices(
+    results: FuzzyFilterResult<Entry>[],
+    type: BroadJavaEntityType,
+  ): APIApplicationCommandOptionChoice<string>[] {
+    return results.map((result) => this.entryToChoice(result.item, type));
+  }
+
+  protected entryToChoice(
+    entry: Entry,
+    type: BroadJavaEntityType,
+  ): APIApplicationCommandOptionChoice<string> {
+    const data = this.data[type][entry.file];
+    const name = data.m;
+    const entityType = fromMappingToEntityType(data.t);
+
+    return {
+      name: `${this.prefixes.autocomplete[entityType]} ${name}`,
+      value: entry.customId,
+    };
   }
 }
