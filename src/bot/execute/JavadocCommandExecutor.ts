@@ -7,7 +7,9 @@ import {
   InteractionType,
   type MappedEvents,
   MessageFlags,
+  RESTJSONErrorCodes,
 } from '@discordjs/core';
+import { DiscordAPIError } from '@discordjs/rest';
 import type { GlobalCommandOptionsSchemaOutput } from '../../config/command/option/GlobalCommandOptionsSchema.js';
 import type { ConfigSchemaOutput } from '../../config/schema/ConfigSchema.js';
 import { fromMappingToEntityType } from '../../javadoc/entity/EntityTypeMapping.js';
@@ -119,13 +121,31 @@ export class JavadocCommandExecutor {
 
     const type = fromMappingToEntityType(input.type);
 
-    await api.interactions.editReply(
-      interaction.application_id,
-      interaction.token,
-      {
-        content: `${this.prefixes.message[type]} ${messageResult.value}`,
-      },
-    );
+    try {
+      await api.interactions.editReply(
+        interaction.application_id,
+        interaction.token,
+        {
+          content: `${this.prefixes.message[type]} ${messageResult.value}`,
+        },
+      );
+    } catch (error) {
+      if (this.isAutomodError(error)) {
+        await api.interactions.editReply(
+          interaction.application_id,
+          interaction.token,
+          { content: this.messages.automodBlock },
+        );
+        return;
+      }
+
+      await api.interactions.editReply(
+        interaction.application_id,
+        interaction.token,
+        { content: this.messages.error },
+      );
+      throw error;
+    }
 
     searcher.bump(query, broadType);
   }
@@ -187,5 +207,14 @@ export class JavadocCommandExecutor {
       return null;
     }
     return option.value;
+  }
+
+  protected isAutomodError(error: unknown): boolean {
+    return (
+      error instanceof DiscordAPIError
+      && (error.code
+        === RESTJSONErrorCodes.MessageWasBlockedByAutomaticModeration
+        || error.code === RESTJSONErrorCodes.MessageBlockedByHarmfulLinksFilter)
+    );
   }
 }

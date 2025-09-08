@@ -48,6 +48,10 @@ export const ConfigSchema = object({
           string(),
           'An error occurred. Please try again, or contact a staff member if this keeps ocurring.',
         ),
+        automodBlock: optional(
+          string(),
+          'My message was blocked by AutoMod. Please make sure I\'m a member, and I have the "Manage Server" permission.',
+        ),
         invalidOption: optional(
           string(),
           'Invalid option. Please choose one from the autocomplete.',
@@ -61,6 +65,9 @@ export const ConfigSchema = object({
       error:
         messages?.error
         ?? 'An error occurred. Please try again, or contact a staff member if this keeps ocurring.',
+      automodBlock:
+        messages?.automodBlock
+        ?? 'My message was blocked by AutoMod. Please make sure I\'m a member, and I have the "Manage Server" permission.',
       invalidOption:
         messages?.invalidOption
         ?? 'Invalid option. Please choose one from the autocomplete.',
